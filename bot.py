@@ -2,7 +2,7 @@ import os
 import requests
 from tqdm import tqdm
 from telegram import Update
-from telegram.ext import Updater, CommandHandler, CallbackContext
+from telegram.ext import Application, CommandHandler, CallbackContext
 
 # Use your bot token here
 TOKEN = '7511374887:AAFrYbS9kE095NXVaq4lEyCSKHg0VBIM6r4'
@@ -17,34 +17,36 @@ def download_file(url, filename):
                     file.write(chunk)
                     bar.update(len(chunk))
 
-def start(update: Update, context: CallbackContext):
-    update.message.reply_text("Send me the TeraBox video URL to download.")
+async def start(update: Update, context: CallbackContext):
+    await update.message.reply_text("Send me the TeraBox video URL to download.")
 
-def download(update: Update, context: CallbackContext):
+async def download(update: Update, context: CallbackContext):
     url = ' '.join(context.args)
     if not url:
-        update.message.reply_text("Please provide a valid TeraBox video URL.")
+        await update.message.reply_text("Please provide a valid TeraBox video URL.")
         return
 
-    update.message.reply_text("Downloading video...")
+    await update.message.reply_text("Downloading video...")
 
     filename = "downloaded_video.mp4"
     try:
         download_file(url, filename)
-        update.message.reply_text("Download complete! Sending file...")
+        await update.message.reply_text("Download complete! Sending file...")
         with open(filename, 'rb') as f:
-            update.message.reply_video(f)
+            await update.message.reply_video(f)
     except Exception as e:
-        update.message.reply_text(f"Error occurred: {e}")
+        await update.message.reply_text(f"Error occurred: {e}")
 
 def main():
-    updater = Updater(TOKEN)
-    dispatcher = updater.dispatcher
-    dispatcher.add_handler(CommandHandler('start', start))
-    dispatcher.add_handler(CommandHandler('download', download))
+    # Create the Application
+    application = Application.builder().token(TOKEN).build()
 
-    updater.start_polling()
-    updater.idle()
+    # Add handlers
+    application.add_handler(CommandHandler('start', start))
+    application.add_handler(CommandHandler('download', download))
+
+    # Run the bot
+    application.run_polling()
 
 if __name__ == "__main__":
     main()
