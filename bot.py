@@ -1,15 +1,15 @@
 import os
 import requests
 from telegram import Update
-from telegram.ext import Updater, CommandHandler, MessageHandler, Filters, CallbackContext
+from telegram.ext import Application, CommandHandler, MessageHandler, filters, CallbackContext
 from bs4 import BeautifulSoup
 
-# Replace with your bot's token
+# Your bot's token
 BOT_TOKEN = '7511374887:AAFrYbS9kE095NXVaq4lEyCSKHg0VBIM6r4'
 
 # Function to handle /start command
-def start(update: Update, context: CallbackContext):
-    update.message.reply_text("Hello! Send me a TeraBox video link, and I'll download it for you.")
+async def start(update: Update, context: CallbackContext):
+    await update.message.reply_text("Hello! Send me a TeraBox video link, and I'll download it for you.")
 
 # Function to scrape TeraBox to get the direct download link
 def get_terabox_download_link(url: str):
@@ -57,50 +57,47 @@ def download_video(url: str, file_name: str, update: Update):
         return False
 
 # Function to handle video URL message
-def handle_message(update: Update, context: CallbackContext):
+async def handle_message(update: Update, context: CallbackContext):
     video_url = update.message.text.strip()
 
     # Check if the URL is from TeraBox (simple check)
     if 'terabox' not in video_url.lower():
-        update.message.reply_text("Please send a valid TeraBox video link.")
+        await update.message.reply_text("Please send a valid TeraBox video link.")
         return
 
     # Get the actual download link (API or Scraping)
     download_url = get_terabox_download_link(video_url)
 
     if not download_url:
-        update.message.reply_text("Could not find a direct download link. Try another video.")
+        await update.message.reply_text("Could not find a direct download link. Try another video.")
         return
 
     file_name = "downloaded_video.mp4"
 
     # Start downloading the video
-    update.message.reply_text("Starting download... Please wait.")
+    await update.message.reply_text("Starting download... Please wait.")
     success = download_video(download_url, file_name, update)
 
     if success:
         # Send the video to the user
         with open(file_name, 'rb') as video_file:
-            update.message.reply_video(video=video_file)
+            await update.message.reply_video(video=video_file)
         os.remove(file_name)  # Remove the file after sending
     else:
-        update.message.reply_text("Failed to download the video.")
+        await update.message.reply_text("Failed to download the video.")
 
 # Main function to set up the bot
-def main():
-    # Create an Updater object
-    updater = Updater(BOT_TOKEN)
-
-    # Get the dispatcher to register handlers
-    dispatcher = updater.dispatcher
+async def main():
+    # Create an Application object instead of Updater
+    application = Application.builder().token(BOT_TOKEN).build()
 
     # Register handlers for commands and messages
-    dispatcher.add_handler(CommandHandler("start", start))
-    dispatcher.add_handler(MessageHandler(Filters.text & ~Filters.command, handle_message))
+    application.add_handler(CommandHandler("start", start))
+    application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
 
     # Start polling to listen for messages
-    updater.start_polling()
-    updater.idle()
+    await application.run_polling()
 
 if __name__ == '__main__':
-    main()
+    import asyncio
+    asyncio.run(main())
